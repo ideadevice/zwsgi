@@ -30,11 +30,12 @@ class ZMQBaseRequestHandler(object):
 
 class ZMQBaseServer(object):
 
-    def __init__(self, address,
+    def __init__(self, address, pattern,
                  context=None, poller=None,
                  RequestHandlerClass=ZMQBaseRequestHandler):
         self._shutdown_request = False
         self.address = address
+        self.pattern = pattern
         self.context = context
         self.poller = poller
         self.sock = self.context.socket(self.pattern)
@@ -58,10 +59,6 @@ class ZMQBaseServer(object):
     def poller(self, poller):
         if not hasattr(self, 'poller'):
             self._poller = poller or zmq.Poller()
-
-    @property
-    def pattern(self):
-        return zmq.ROUTER
 
     @property
     def protocol(self):
@@ -115,26 +112,26 @@ class ZMQBaseServer(object):
         pass
 
     def _eventloop(self):
-        try:
-            socks = dict(self.poller.poll())
-            if socks.get(self.sock) == zmq.POLLIN:
-                ingress = self.sock.recv_multipart(zmq.DONTWAIT)
-                # print "ingress", ingress
-                self._handle(ingress)
-            if socks.get(self.pipe) == zmq.POLLIN:
-                egress = self.pipe.recv_multipart(zmq.DONTWAIT)
-                # print "egress", egress
-                self.sock.send_multipart(egress)
-        except:
-            self.do_close()
-            raise
+        while not self._shutdown_request:
+            try:
+                socks = dict(self.poller.poll())
+                if socks.get(self.sock) == zmq.POLLIN:
+                    ingress = self.sock.recv_multipart(zmq.DONTWAIT)
+                    # print "ingress", ingress
+                    self._handle(ingress)
+                if socks.get(self.pipe) == zmq.POLLIN:
+                    egress = self.pipe.recv_multipart(zmq.DONTWAIT)
+                    # print "egress", egress
+                    self.sock.send_multipart(egress)
+            except:
+                self.do_close()
+                raise
 
     def _serve(self):
         try:
             self._start_accept()
             # print "Starting event loop"
-            while not self._shutdown_request:
-                self._eventloop()
+            self._eventloop()
         except:
             self._stop()
             raise
@@ -143,13 +140,19 @@ class ZMQBaseServer(object):
         if not self.sock_closed:
             self.sock.close()
             self.poller.unregister(self.sock)
+
+    def _close_pipe(self):
         if not self.pipe_closed:
             self.pipe.close()
             self.poller.unregister(self.pipe)
 
+    def _close(self):
+        self._close_sock()
+        self._close_pipe()
+
     def _stop(self):
         self._shutdown_request = True
-        self._close_sock()
+        self._close()
 
     def serve_forever(self):
         try:
