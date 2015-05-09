@@ -3,8 +3,6 @@
 """Base ZMQ server classes.
 """
 
-from threading import Thread
-
 import zmq
 from zmq.error import ZMQError
 
@@ -88,8 +86,7 @@ class ZMQBaseServer(object):
 
     def _handle(self, request):
         handler = self.RequestHandlerClass(request, self.context, self.pipe_endpoint)
-        # TODO: Use pool
-        Thread(target=handler.handle).start()
+        handler.handle()
 
     def _start_accepting(self):
         self.socket.bind(self.address)
