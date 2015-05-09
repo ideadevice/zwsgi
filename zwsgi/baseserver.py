@@ -44,6 +44,8 @@ class ZMQBaseServerDispatcherThread(Thread):
 
 class ZMQBaseServer(object):
 
+    ServerDispatcherThread = ZMQBaseServerDispatcherThread
+
     def __init__(self, address,
                  context=None, poller=None, ppoller=None,
                  RequestHandlerClass=ZMQBaseRequestHandler):
@@ -125,10 +127,10 @@ class ZMQBaseServer(object):
         self._init_handler_thread()
 
     def _init_handler_thread(self):
-        ht = ZMQBaseServerDispatcherThread(self.context,
-                                           self.ppoller,
-                                           self.pipe_endpoint,
-                                           self.out_queue,
+        ht = self.ServerDispatcherThread(self.context,
+                                         self.ppoller,
+                                         self.pipe_endpoint,
+                                         self.out_queue,
         )
         ht.start()
 
