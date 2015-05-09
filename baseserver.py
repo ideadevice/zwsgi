@@ -22,28 +22,33 @@ class ZMQBaseRequestHandler(object):
 
 class ZMQRequestHandlerThread(Thread):
 
-    def __init__(self, RequestHandlerClass, context, poller, pipe_endpoint):
+    def __init__(self, RequestHandlerClass, context, pipe_endpoint, identity):
         super(ZMQRequestHandlerThread, self).__init__()
         self.RequestHandlerClass = RequestHandlerClass
-        self.init_pipe(context, poller, pipe_endpoint)
+        self.init_pipe(context, pipe_endpoint, identity)
 
-    def init_pipe(self, context, poller, pipe_endpoint, linger=1):
-        self.pipe = context.socket(zmq.PAIR)
+    def init_pipe(self, context, pipe_endpoint, identity, linger=1):
+        self.pipe = context.socket(zmq.DEALER)
         self.pipe.linger = linger
+        self.pipe.setsockopt_unicode(zmq.IDENTITY, unicode(identity))
         self.pipe.connect(pipe_endpoint)
         self.poller = zmq.Poller()
         self.poller.register(self.pipe, zmq.POLLIN)
 
+    def handler(self, request):
+        response = self.RequestHandlerClass(request).handle()
+        return response
+
     def run(self):
-        while True:
-            socks = dict(self.poller.poll())
-            if socks.get(self.pipe) == zmq.POLLIN:
-                request = self.pipe.recv_multipart()
-                print "pipe:recv", request
-                self.handler = self.RequestHandlerClass(request)
-                response = self.handler.handle()
-                print "pipe:send", response
-                self.pipe.send_multipart(response)
+        print "Waiting for work"
+        socks = dict(self.poller.poll())
+        if socks.get(self.pipe) == zmq.POLLIN:
+            _, route, request = self.pipe.recv_multipart()
+            print "request", request
+            response = self.handler(request)
+            print "response", response
+            self.pipe.send_multipart([route, response])
+        print "Work done"
 
 
 class ZMQBaseServer(object):
@@ -130,7 +135,10 @@ class ZMQBaseServer(object):
 
     def do_handle(self, message):
         try:
-            self.do_send(self.pipe, message)
+            handler_identity = uuid.uuid4()
+            ht = ZMQRequestHandlerThread(self.RequestHandlerClass, self.context, self.pipe_endpoint, handler_identity)
+            ht.start()
+            self.pipe.send_multipart([str(handler_identity), ''] + message)
         except:
             self.do_close()
             raise
@@ -151,12 +159,11 @@ class ZMQBaseServer(object):
                 socks = dict(self.poller.poll(t_ms))
                 if socks.get(self.socket) == zmq.POLLIN:
                     message = self.do_recv(self.socket)
-                    print "sock:recv", message
                     self.do_handle(message)
                 if socks.get(self.pipe) == zmq.POLLIN:
                     message = self.do_recv(self.pipe)
-                    print "sock:send", message
-                    self.do_send(self.socket, message)
+                    response = message[1:]
+                    self.do_send(self.socket, response)
             except:
                 raise
 
@@ -178,20 +185,18 @@ class ZMQBaseServer(object):
 
     def _init_pipe(self, linger=1, hwm_size=100, identity=uuid.uuid4()):
         self.pipe_endpoint = "inproc://{0}.inproc".format(id(self))
-        self.pipe = self.context.socket(zmq.PAIR)
+        self.pipe = self.context.socket(zmq.ROUTER)
         self.pipe.linger = linger
         self.socket.setsockopt_unicode(zmq.IDENTITY, unicode(identity))
         self.pipe.bind(self.pipe_endpoint)
         self.poller.register(self.pipe, zmq.POLLIN)
 
     def _init_handler_thread(self):
-        ht = ZMQRequestHandlerThread(self.RequestHandlerClass, self.context, self.poller, self.pipe_endpoint)
-        ht.start()
+        pass
 
     def _start(self):
         self._init_socket()
         self._init_pipe()
-        self._init_handler_thread()
         self._serve()
 
     def start(self):
