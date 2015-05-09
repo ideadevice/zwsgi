@@ -19,6 +19,8 @@ class ZMQBaseRequestHandler(object):
         self.sock.send_multipart(response)
 
     def _handle(self):
+        # import time; time.sleep(0.1)
+        # print "Request", self.request
         return self.request
 
     def handle(self):
@@ -35,7 +37,7 @@ class ZMQBaseServer(object):
         self.address = address
         self.context = context
         self.poller = poller
-        self.socket = self.context.socket(self.pattern)
+        self.sock = self.context.socket(self.pattern)
         self.pipe = self.context.socket(zmq.PULL)
         self.RequestHandlerClass = RequestHandlerClass
 
@@ -74,8 +76,8 @@ class ZMQBaseServer(object):
         return self.address.split(':')[2]
 
     @property
-    def socket_closed(self):
-        return self.socket.closed if hasattr(self, 'socket') else True
+    def sock_closed(self):
+        return self.sock.closed if hasattr(self, 'sock') else True
 
     @property
     def pipe_closed(self):
@@ -84,54 +86,70 @@ class ZMQBaseServer(object):
     def do_close(self):
         pass
 
-    def _configure(self):
-        self.pipe_endpoint = "inproc://{0}.inproc".format(id(self))
-
     def _handle(self, request):
         handler = self.RequestHandlerClass(request,
                                            self.pipe_endpoint)
         handler.handle()
 
-    def _start_accepting(self):
-        self.socket.bind(self.address)
+    def _accept_pipe(self):
         self.pipe.bind(self.pipe_endpoint)
-        self.poller.register(self.socket, zmq.POLLIN)
         self.poller.register(self.pipe, zmq.POLLIN)
+
+    def _accept_sock(self):
+        self.sock.bind(self.address)
+        self.poller.register(self.sock, zmq.POLLIN)
+
+    def _accept(self):
+        self._accept_sock()
+        self._accept_pipe()
+
+    def _pre_accept(self):
+        self.pipe_endpoint = "inproc://{0}.inproc".format(id(self))
+
+    def _start_accept(self):
+        self._pre_accept()
+        self._accept()
+        self._post_accept()
+
+    def _post_accept(self):
+        pass
 
     def _eventloop(self):
         try:
             socks = dict(self.poller.poll())
-            if socks.get(self.socket) == zmq.POLLIN:
-                request = self.socket.recv_multipart(zmq.DONTWAIT)
-                self._handle(request)
+            if socks.get(self.sock) == zmq.POLLIN:
+                ingress = self.sock.recv_multipart(zmq.DONTWAIT)
+                # print "ingress", ingress
+                self._handle(ingress)
             if socks.get(self.pipe) == zmq.POLLIN:
-                response = self.pipe.recv_multipart(zmq.DONTWAIT)
-                self.socket.send_multipart(response)
+                egress = self.pipe.recv_multipart(zmq.DONTWAIT)
+                # print "egress", egress
+                self.sock.send_multipart(egress)
         except:
             self.do_close()
             raise
 
     def _serve(self):
         try:
-            self._configure()
-            self._start_accepting()
+            self._start_accept()
+            # print "Starting event loop"
             while not self._shutdown_request:
                 self._eventloop()
         except:
             self._stop()
             raise
 
-    def _close_socket(self):
-        if not self.socket_closed:
-            self.socket.close()
-            self.poller.unregister(self.socket)
+    def _close_sock(self):
+        if not self.sock_closed:
+            self.sock.close()
+            self.poller.unregister(self.sock)
         if not self.pipe_closed:
             self.pipe.close()
             self.poller.unregister(self.pipe)
 
     def _stop(self):
         self._shutdown_request = True
-        self._close_socket()
+        self._close_sock()
 
     def serve_forever(self):
         try:
