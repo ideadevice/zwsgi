@@ -9,8 +9,9 @@ from zmq.error import ZMQError
 
 class ZMQBaseRequestHandler(object):
 
-    def __init__(self, request, context, endpoint):
+    def __init__(self, request, endpoint):
         self.request = request
+        context = zmq.Context.instance()
         self.sock = context.socket(zmq.PUSH)
         self.sock.connect(endpoint)
 
@@ -36,7 +37,6 @@ class ZMQBaseServer(object):
         self.poller = poller
         self.socket = self.context.socket(self.pattern)
         self.pipe = self.context.socket(zmq.PULL)
-        self.pipe_endpoint = "inproc://{0}.inproc".format(id(self))
         self.RequestHandlerClass = RequestHandlerClass
 
     @property
@@ -84,8 +84,12 @@ class ZMQBaseServer(object):
     def do_close(self):
         pass
 
+    def _configure(self):
+        self.pipe_endpoint = "inproc://{0}.inproc".format(id(self))
+
     def _handle(self, request):
-        handler = self.RequestHandlerClass(request, self.context, self.pipe_endpoint)
+        handler = self.RequestHandlerClass(request,
+                                           self.pipe_endpoint)
         handler.handle()
 
     def _start_accepting(self):
@@ -109,6 +113,7 @@ class ZMQBaseServer(object):
 
     def _serve(self):
         try:
+            self._configure()
             self._start_accepting()
             while not self._shutdown_request:
                 self._eventloop()
