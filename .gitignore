@@ -6,3 +6,4 @@
 PYSMELLTAGS*
 .coverage
 .gitissues
+*.egg-info

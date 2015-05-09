@@ -6,7 +6,7 @@
 #import zmq.green as zmq
 
 import zmq
-from baseserver import ZMQBaseServer
+from zwsgi.baseserver import ZMQBaseServer
 
 
 def main():
