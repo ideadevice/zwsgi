@@ -14,7 +14,7 @@ def main():
     context = zmq.Context()
     poller = zmq.Poller()
     ppoller = zmq.Poller()
-    server=(zmq.ROUTER, 'tcp', '127.0.0.1', '7000')
+    server=(zmq.REP, 'tcp', '127.0.0.1', '7000')
     server = ZMQBaseServer(server, context=context, poller=poller, ppoller=ppoller)
     server.serve()
 

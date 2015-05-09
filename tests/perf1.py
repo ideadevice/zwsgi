@@ -1,18 +1,17 @@
 # -*- coding: utf-8 -*-
 
-
 import time
-import zmq
+from sample_client import client, run
 
-c = zmq.Context()
-sock = c.socket(zmq.DEALER)
-sock.connect('tcp://localhost:7000')
 
-while True:
+def main():
+    sock = client()
+    while True:
+        start = time.time()
+        run(sock)
+        end = time.time()
+        print end - start
 
-    start = time.time()
-    request = 'hello world'
-    sock.send(request)
-    response = sock.recv()
-    end = time.time()
-    print end - start
+
+if __name__ == '__main__':
+    main()
