@@ -1,0 +1,8 @@
+*.swp
+*.pyc
+*~
+*#
+*.so
+PYSMELLTAGS*
+.coverage
+.gitissues
