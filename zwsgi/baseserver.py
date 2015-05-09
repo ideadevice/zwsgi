@@ -4,7 +4,6 @@
 """
 
 from threading import Thread
-from Queue import Queue
 
 import zmq
 from zmq.error import ZMQError
@@ -12,12 +11,13 @@ from zmq.error import ZMQError
 
 class ZMQBaseRequestHandler(object):
 
-    def __init__(self, request, queue):
+    def __init__(self, request, context, endpoint):
         self.request = request
-        self.queue = queue
+        self.sock = context.socket(zmq.PUSH)
+        self.sock.connect(endpoint)
 
     def send(self, response):
-        self.queue.put(response)
+        self.sock.send_multipart(response)
 
     def _handle(self):
         return self.request
@@ -27,36 +27,17 @@ class ZMQBaseRequestHandler(object):
         self.send(response)
 
 
-class ZMQBaseServerDispatcherThread(Thread):
-
-    def __init__(self, context, poller, pipe_endpoint, out_queue):
-        super(ZMQBaseServerDispatcherThread, self).__init__()
-        self.out_queue = out_queue
-        self.pipe = context.socket(zmq.PAIR)
-        self.pipe.connect(pipe_endpoint)
-        self.poller = poller
-        self.poller.register(self.pipe, zmq.POLLIN)
-
-    def run(self):
-        while True:
-            self.pipe.send_multipart(self.out_queue.get())
-
-
 class ZMQBaseServer(object):
 
-    ServerDispatcherThread = ZMQBaseServerDispatcherThread
-
     def __init__(self, address,
-                 context=None, poller=None, ppoller=None,
+                 context=None, poller=None,
                  RequestHandlerClass=ZMQBaseRequestHandler):
         self._shutdown_request = False
-        self.out_queue = Queue()
         self.address = address
         self.context = context
         self.poller = poller
-        self.ppoller = ppoller
         self.socket = self.context.socket(self.pattern)
-        self.pipe = self.context.socket(zmq.PAIR)
+        self.pipe = self.context.socket(zmq.PULL)
         self.pipe_endpoint = "inproc://{0}.inproc".format(id(self))
         self.RequestHandlerClass = RequestHandlerClass
 
@@ -77,15 +58,6 @@ class ZMQBaseServer(object):
     def poller(self, poller):
         if not hasattr(self, 'poller'):
             self._poller = poller or zmq.Poller()
-
-    @property
-    def ppoller(self):
-        return self._ppoller
-
-    @ppoller.setter
-    def ppoller(self, ppoller):
-        if not hasattr(self, 'ppoller'):
-            self._ppoller = ppoller or zmq.Poller()
 
     @property
     def pattern(self):
@@ -115,8 +87,8 @@ class ZMQBaseServer(object):
         pass
 
     def _handle(self, request):
-        handler = self.RequestHandlerClass(request, self.out_queue)
-        #TODO: Use pool
+        handler = self.RequestHandlerClass(request, self.context, self.pipe_endpoint)
+        # TODO: Use pool
         Thread(target=handler.handle).start()
 
     def _start_accepting(self):
@@ -124,15 +96,6 @@ class ZMQBaseServer(object):
         self.pipe.bind(self.pipe_endpoint)
         self.poller.register(self.socket, zmq.POLLIN)
         self.poller.register(self.pipe, zmq.POLLIN)
-        self._init_handler_thread()
-
-    def _init_handler_thread(self):
-        ht = self.ServerDispatcherThread(self.context,
-                                         self.ppoller,
-                                         self.pipe_endpoint,
-                                         self.out_queue,
-        )
-        ht.start()
 
     def _eventloop(self):
         try:
