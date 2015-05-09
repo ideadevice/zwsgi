@@ -12,9 +12,8 @@ def main():
 
     context = zmq.Context()
     poller = zmq.Poller()
-    ppoller = zmq.Poller()
     address = 'tcp://127.0.0.1:7000'
-    server = ZMQBaseServer(address, context=context, poller=poller, ppoller=ppoller)
+    server = ZMQBaseServer(address, context=context, poller=poller)
     server.serve_forever()
 
 if __name__ == "__main__":
