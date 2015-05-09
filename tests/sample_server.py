@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from zwsgi.baseserver import ZMQBaseServer
+from zwsgi.servers import ZMQBaseServer
 
 
 def main():

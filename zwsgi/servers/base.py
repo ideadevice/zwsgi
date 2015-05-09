@@ -165,4 +165,4 @@ class ZMQBaseServer(object):
         return '<%s at %s %s>' % (type(self).__name__, hex(id(self)), self._formatinfo())
 
     def __str__(self):
-        return '<%s %s>' % (type(self).__name__, self._formatinfo())
+        return '<%s at %s %s>' % (type(self).__name__, hex(id(self)), self._formatinfo())
