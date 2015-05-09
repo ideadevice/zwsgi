@@ -16,11 +16,13 @@ class ZMQBaseRequestHandler(object):
         self.sock.connect(address)
 
     def send(self, response):
+        print "Sending response"
         self.sock.send_multipart(response)
+        print "Sent response"
 
     def _handle(self):
         # import time; time.sleep(0.1)
-        # print "Request", self.request
+        print "Request", self.request
         return self.request
 
     def handle(self):
@@ -84,8 +86,7 @@ class ZMQBaseServer(object):
         pass
 
     def _handle(self, request):
-        handler = self.RequestHandlerClass(request,
-                                           self.pipe_address)
+        handler = self.RequestHandlerClass(request,self.pipe_address)
         handler.handle()
 
     def _accept_pipe(self):
@@ -102,6 +103,7 @@ class ZMQBaseServer(object):
 
     def _pre_accept(self):
         self.pipe_address = "inproc://{0}.inproc".format(id(self))
+        print "pipe_address {}".format(self.pipe_address)
 
     def _start_accept(self):
         self._pre_accept()
@@ -112,16 +114,19 @@ class ZMQBaseServer(object):
         pass
 
     def _eventloop(self):
+        # TODO: remove timeout
+        t_ms = 5000
         while not self._shutdown_request:
             try:
-                socks = dict(self.poller.poll())
+                socks = dict(self.poller.poll(t_ms))
+                print "Got event on socks: {}".format(socks)
                 if socks.get(self.sock) == zmq.POLLIN:
                     ingress = self.sock.recv_multipart(zmq.DONTWAIT)
-                    # print "ingress", ingress
+                    print "ingress", ingress
                     self._handle(ingress)
                 if socks.get(self.pipe) == zmq.POLLIN:
                     egress = self.pipe.recv_multipart(zmq.DONTWAIT)
-                    # print "egress", egress
+                    print "egress", egress
                     self.sock.send_multipart(egress)
             except:
                 self.do_close()
@@ -130,7 +135,7 @@ class ZMQBaseServer(object):
     def _serve(self):
         try:
             self._start_accept()
-            # print "Starting event loop"
+            print "Starting event loop"
             self._eventloop()
         except:
             self._stop()
