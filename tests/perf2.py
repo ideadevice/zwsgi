@@ -24,5 +24,4 @@ while True:
     request = 'hi'
     sock.send(request)
     response = sock.recv()
-    time.sleep(0.001)
     n += 1
