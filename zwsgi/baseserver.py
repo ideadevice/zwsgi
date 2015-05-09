@@ -22,16 +22,13 @@ class ZMQBaseRequestHandler(object):
 
 class ZMQRequestHandlerThread(Thread):
 
-    def __init__(self, RequestHandlerClass, context, pipe_endpoint):
+    def __init__(self, RequestHandlerClass, context, poller, pipe_endpoint):
         super(ZMQRequestHandlerThread, self).__init__()
         self.RequestHandlerClass = RequestHandlerClass
-        self.init_pipe(context, pipe_endpoint)
-
-    def init_pipe(self, context, pipe_endpoint, linger=1):
         self.pipe = context.socket(zmq.PAIR)
-        self.pipe.linger = linger
+        self.pipe.linger = 1
         self.pipe.connect(pipe_endpoint)
-        self.poller = zmq.Poller()
+        self.poller = poller
         self.poller.register(self.pipe, zmq.POLLIN)
 
     def handler(self, request):
@@ -39,7 +36,6 @@ class ZMQRequestHandlerThread(Thread):
         return response
 
     def run(self):
-        # print "Thread: {}: Waiting for work".format(id(self))
         while True:
             socks = dict(self.poller.poll())
             if socks.get(self.pipe) == zmq.POLLIN:
@@ -49,17 +45,19 @@ class ZMQRequestHandlerThread(Thread):
                 response = self.handler(request)
                 # print "response", response
                 self.pipe.send_multipart(response)
-        # print "Thread: {}: Work done".format(id(self))
 
 
 class ZMQBaseServer(object):
 
-    def __init__(self, server, context=None, poller=None, RequestHandlerClass=ZMQBaseRequestHandler):
+    def __init__(self, server,
+                 context=None, poller=None, ppoller=None,
+                 RequestHandlerClass=ZMQBaseRequestHandler):
         self._shutdown_request = False
         self._stop_event = Event()
         self._stop_event.set()
         self.context = context
         self.poller = poller
+        self.ppoller = ppoller
         self.server = server
         self.RequestHandlerClass = RequestHandlerClass
 
@@ -80,6 +78,15 @@ class ZMQBaseServer(object):
     def poller(self, poller):
         if not hasattr(self, 'poller'):
             self._poller = poller or zmq.Poller()
+
+    @property
+    def ppoller(self):
+        return self._ppoller
+
+    @ppoller.setter
+    def ppoller(self, ppoller):
+        if not hasattr(self, 'ppoller'):
+            self._ppoller = ppoller or zmq.Poller()
 
     @property
     def server(self):
@@ -181,12 +188,15 @@ class ZMQBaseServer(object):
         self.pipe_endpoint = "inproc://{0}.inproc".format(id(self))
         self.pipe = self.context.socket(zmq.PAIR)
         self.pipe.linger = linger
-        self.socket.setsockopt_unicode(zmq.IDENTITY, unicode(identity))
         self.pipe.bind(self.pipe_endpoint)
         self.poller.register(self.pipe, zmq.POLLIN)
 
     def _init_handler_thread(self):
-        ht = ZMQRequestHandlerThread(self.RequestHandlerClass, self.context, self.pipe_endpoint)
+        ht = ZMQRequestHandlerThread(self.RequestHandlerClass,
+                                     self.context,
+                                     self.ppoller,
+                                     self.pipe_endpoint,
+        )
         ht.start()
 
     def _start(self):

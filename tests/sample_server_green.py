@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
 
-#import gevent
-#from gevent import monkey
-#monkey.patch_all()
-#import zmq.green as zmq
+import gevent
+from gevent import monkey
+monkey.patch_all()
+import zmq.green as zmq
 
-import zmq
 from zwsgi.baseserver import ZMQBaseServer
 
 
