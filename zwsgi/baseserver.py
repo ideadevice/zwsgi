@@ -9,11 +9,11 @@ from zmq.error import ZMQError
 
 class ZMQBaseRequestHandler(object):
 
-    def __init__(self, request, endpoint):
+    def __init__(self, request, address):
         self.request = request
         context = zmq.Context.instance()
         self.sock = context.socket(zmq.PUSH)
-        self.sock.connect(endpoint)
+        self.sock.connect(address)
 
     def send(self, response):
         self.sock.send_multipart(response)
@@ -88,11 +88,11 @@ class ZMQBaseServer(object):
 
     def _handle(self, request):
         handler = self.RequestHandlerClass(request,
-                                           self.pipe_endpoint)
+                                           self.pipe_address)
         handler.handle()
 
     def _accept_pipe(self):
-        self.pipe.bind(self.pipe_endpoint)
+        self.pipe.bind(self.pipe_address)
         self.poller.register(self.pipe, zmq.POLLIN)
 
     def _accept_sock(self):
@@ -104,7 +104,7 @@ class ZMQBaseServer(object):
         self._accept_pipe()
 
     def _pre_accept(self):
-        self.pipe_endpoint = "inproc://{0}.inproc".format(id(self))
+        self.pipe_address = "inproc://{0}.inproc".format(id(self))
 
     def _start_accept(self):
         self._pre_accept()
