@@ -4,7 +4,7 @@
 from gevent import Greenlet
 
 from zwsgi.servers import ZMQBaseServer as _original_ZMQBaseServer
-from zwsgi.handlers import ZMQBaseRequestHandlerChannel
+from zwsgi.channels import ZMQBaseRequestHandlerChannel
 
 
 class ZMQBaseRequestHandlerGreenlet(ZMQBaseRequestHandlerChannel, Greenlet):
