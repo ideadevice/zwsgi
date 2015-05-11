@@ -2,7 +2,7 @@
 
 import zmq
 
-def client(pattern=zmq.DEALER, addr='tcp://localhost:7000'):
+def client(pattern=zmq.REQ, addr='tcp://localhost:7000'):
     c = zmq.Context()
     sock = c.socket(pattern)
     sock.connect(addr)

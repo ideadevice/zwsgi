@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
 
 from .base import ZMQBaseServer
-from .router import ZMQRouterServer
+from .router import ZMQRouterDealerServer, ZMQRouterReqServer
+from .rep import ZMQRepReqServer
 
 
 __all__ = [
     'ZMQBaseServer',
-    'ZMQRouterServer',
+    'ZMQRouterDealerServer',
+    'ZMQRouterReqServer',
+    'ZMQRepReqServer',
 ]

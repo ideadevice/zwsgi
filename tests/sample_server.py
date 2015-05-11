@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 
 import zmq
-from zwsgi.servers import ZMQRouterServer
+from zwsgi.servers import *
 
 
 def main():
-    server = ZMQRouterServer(('127.0.0.1', 7000))
+    server = ZMQRouterDealerServer(('127.0.0.1', 7000))
+    print server
     server.serve_forever()
 
 

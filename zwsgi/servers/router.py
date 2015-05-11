@@ -5,5 +5,9 @@ import zmq
 from .base import ZMQBaseServer
 
 
-class ZMQRouterServer(ZMQBaseServer):
+class ZMQRouterDealerServer(ZMQBaseServer):
+    pattern = zmq.ROUTER
+
+
+class ZMQRouterReqServer(ZMQBaseServer):
     pattern = zmq.ROUTER

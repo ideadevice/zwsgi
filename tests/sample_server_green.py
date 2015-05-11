@@ -4,12 +4,13 @@ import gevent
 from gevent import monkey
 monkey.patch_all()
 
-from zwsgi.green.servers import ZMQRouterServer
+from zwsgi.green.servers import *
 
 
 def main():
 
-    server = ZMQRouterServer(('127.0.0.1', 7000))
+    server = ZMQRouterDealerServer(('127.0.0.1', 7000))
+    print server
     server.serve_forever()
 
 
