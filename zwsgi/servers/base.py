@@ -7,12 +7,15 @@ import zmq
 from zmq.error import ZMQError
 
 
-class ZMQBaseRequestHandler(object):
+from zwsgi.handlers import ZMQBaseRequestHandler
 
-    def __init__(self, request, address):
+
+class ZMQBaseRequestHandlerChannel(object):
+
+    def __init__(self, request, RequestHandlerClass, address):
+        self.RequestHandlerClass = RequestHandlerClass
         self.request = request
-        context = zmq.Context.instance()
-        self.sock = context.socket(zmq.PUSH)
+        self.sock = zmq.Context.instance().socket(zmq.PUSH)
         self.sock.connect(address)
 
     def send(self, response):
@@ -20,17 +23,16 @@ class ZMQBaseRequestHandler(object):
         self.sock.send_multipart(response)
         print "Sent response"
 
-    def _handle(self):
+    def run(self):
         # import time; time.sleep(0.1)
-        print "Request", self.request
-        return self.request
-
-    def handle(self):
-        response = self._handle()
+        print "Handle Request", self.request
+        response = self.RequestHandlerClass(self.request).handle()
         self.send(response)
 
 
 class ZMQBaseServer(object):
+
+    RequestHandlerChannel = ZMQBaseRequestHandlerChannel
 
     def __init__(self, address, pattern,
                  context=None, poller=None,
@@ -86,8 +88,7 @@ class ZMQBaseServer(object):
         pass
 
     def _handle(self, request):
-        handler = self.RequestHandlerClass(request,self.pipe_address)
-        handler.handle()
+        self.RequestHandlerChannel(request, self.RequestHandlerClass, self.pipe_address).run()
 
     def _accept_pipe(self):
         self.pipe.bind(self.pipe_address)
