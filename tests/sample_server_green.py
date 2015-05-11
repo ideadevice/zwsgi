@@ -1,11 +1,7 @@
 # -*- coding: utf-8 -*-
 
-import gevent
-from gevent import monkey
+from zwsgi import monkey
 monkey.patch_all()
-
-from zwsgi.servers import patch_poller
-patch_poller()
 
 from zwsgi.servers import *
 

@@ -9,14 +9,7 @@ import zmq
 from zmq.error import ZMQError
 
 from zwsgi.handlers import ZMQBaseRequestHandler
-
-
-_Poller = zmq.Poller
-
-def patch_poller():
-    global _Poller
-    import zmq.green
-    _Poller = zmq.green.Poller
+from zwsgi.monkey import _Poller
 
 
 class ZMQBaseServerChannel(Thread):
