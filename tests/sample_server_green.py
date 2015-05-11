@@ -9,8 +9,7 @@ from zwsgi.green.servers import ZMQRouterServer
 
 def main():
 
-    address = 'tcp://127.0.0.1:7000'
-    server = ZMQRouterServer(address)
+    server = ZMQRouterServer(('127.0.0.1', 7000))
     server.serve_forever()
 
 

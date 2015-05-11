@@ -21,15 +21,16 @@ class ZMQBaseRequestHandlerThread(ZMQBaseRequestHandlerChannel, Thread):
 
 class ZMQBaseServer(object):
 
+    protocol = "tcp"
     RequestHandlerChannel = ZMQBaseRequestHandlerThread
     RequestHandlerClass = ZMQBaseRequestHandler
     pattern = None
     poller = zmq.Poller()
 
-    def __init__(self, address,
+    def __init__(self, listener,
                  context=None,
                  handler_class=None):
-        self.address = address
+        self.listener = listener
         self.context = context or zmq.Context.instance()
         self.sock = self.context.socket(self.pattern)
         self.pipe = self.context.socket(zmq.PULL)
@@ -38,16 +39,8 @@ class ZMQBaseServer(object):
         self._shutdown_request = False
 
     @property
-    def protocol(self):
-        return self.address.split(':')[0]
-
-    @property
-    def interface(self):
-        return self.address.split(':')[1].lstrip('//')
-
-    @property
-    def port(self):
-        return self.address.split(':')[2]
+    def address(self):
+        return "{}://{}:{}".format(self.protocol, self.listener[0], self.listener[1])
 
     @property
     def sock_closed(self):
