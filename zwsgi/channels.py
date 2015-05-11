@@ -7,9 +7,9 @@ class ZMQBaseRequestHandlerChannel(object):
 
     pattern = zmq.PUSH
 
-    def __init__(self, request, context, RequestHandlerClass, address):
+    def __init__(self, ingress, context, RequestHandlerClass, address):
         self.context = context
-        self.request = request
+        self.ingress = ingress
         self.RequestHandlerClass = RequestHandlerClass
         self.address = address
 
@@ -18,23 +18,32 @@ class ZMQBaseRequestHandlerChannel(object):
         self.sock.linger = 1
         self.sock.connect(self.address)
 
+    def unpack(self):
+        print "Ingress:", self.ingress
+        self.request = self.ingress
+        print "Request:", self.request
+
     def handle(self):
         # import time; time.sleep(0.1)
-        # print "Handle Request", self.request
-        return self.RequestHandlerClass(self.request).handle()
+        self.response = self.RequestHandlerClass(self.request).handle()
 
-    def send(self, response):
-        # print "Sending response"
-        self.sock.send_multipart(response)
-        # print "Sent response"
+    def pack(self):
+        print "Response:", self.response
+        self.egress = self.response
+        print "Egress:", self.egress
+
+    def send(self):
+        self.sock.send_multipart(self.egress)
 
     def disconnect(self):
         self.sock.close()
 
     def run(self):
         self.connect()
-        response = self.handle()
-        self.send(response)
+        self.unpack()
+        self.handle()
+        self.pack()
+        self.send()
         self.disconnect()
 
     _run = run # to make greenlets work

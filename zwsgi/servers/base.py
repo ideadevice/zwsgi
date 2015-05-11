@@ -53,8 +53,8 @@ class ZMQBaseServer(object):
     def do_close(self):
         pass
 
-    def _handle(self, request):
-        self.RequestHandlerChannel(request, self.context, self.RequestHandlerClass, self.pipe_address).start()
+    def _handle(self, ingress):
+        self.RequestHandlerChannel(ingress, self.context, self.RequestHandlerClass, self.pipe_address).start()
 
     def _accept_pipe(self):
         self.pipe.bind(self.pipe_address)
