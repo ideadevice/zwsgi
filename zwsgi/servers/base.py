@@ -3,36 +3,24 @@
 """Base ZMQ server classes.
 """
 
+from threading import Thread
+
 import zmq
 from zmq.error import ZMQError
 
+from zwsgi.handlers import ZMQBaseRequestHandlerChannel, ZMQBaseRequestHandler
 
-from zwsgi.handlers import ZMQBaseRequestHandler
 
+class ZMQBaseRequestHandlerThread(ZMQBaseRequestHandlerChannel, Thread):
 
-class ZMQBaseRequestHandlerChannel(object):
-
-    def __init__(self, request, RequestHandlerClass, address):
-        self.RequestHandlerClass = RequestHandlerClass
-        self.request = request
-        self.sock = zmq.Context.instance().socket(zmq.PUSH)
-        self.sock.connect(address)
-
-    def send(self, response):
-        print "Sending response"
-        self.sock.send_multipart(response)
-        print "Sent response"
-
-    def run(self):
-        # import time; time.sleep(0.1)
-        print "Handle Request", self.request
-        response = self.RequestHandlerClass(self.request).handle()
-        self.send(response)
+    def __init__(self, *args):
+        Thread.__init__(self)
+        ZMQBaseRequestHandlerChannel.__init__(self, *args)
 
 
 class ZMQBaseServer(object):
 
-    RequestHandlerChannel = ZMQBaseRequestHandlerChannel
+    RequestHandlerChannel = ZMQBaseRequestHandlerThread
 
     def __init__(self, address, pattern,
                  context=None, poller=None,
@@ -88,7 +76,7 @@ class ZMQBaseServer(object):
         pass
 
     def _handle(self, request):
-        self.RequestHandlerChannel(request, self.RequestHandlerClass, self.pipe_address).run()
+        self.RequestHandlerChannel(request, self.context, self.RequestHandlerClass, self.pipe_address).start()
 
     def _accept_pipe(self):
         self.pipe.bind(self.pipe_address)
@@ -103,7 +91,7 @@ class ZMQBaseServer(object):
         self._accept_pipe()
 
     def _pre_accept(self):
-        self.pipe_address = "inproc://{0}.inproc".format(id(self))
+        self.pipe_address = "inproc://inproc".format(id(self))
         print "pipe_address {}".format(self.pipe_address)
 
     def _start_accept(self):

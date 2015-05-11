@@ -5,7 +5,7 @@ from gevent import monkey
 monkey.patch_all()
 
 import zmq.green as zmq
-from zwsgi.servers import ZMQBaseServer
+from zwsgi.green.servers import ZMQBaseServer
 
 
 def main():
