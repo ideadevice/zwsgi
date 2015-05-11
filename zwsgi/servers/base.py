@@ -24,36 +24,18 @@ class ZMQBaseServer(object):
     RequestHandlerChannel = ZMQBaseRequestHandlerThread
     RequestHandlerClass = ZMQBaseRequestHandler
     pattern = None
+    poller = zmq.Poller()
 
     def __init__(self, address,
-                 context=None, poller=None,
+                 context=None,
                  handler_class=None):
         self.address = address
-        self.context = context
-        self.poller = poller
+        self.context = context or zmq.Context.instance()
         self.sock = self.context.socket(self.pattern)
         self.pipe = self.context.socket(zmq.PULL)
         if handler_class is not None:
             self.RequestHandlerClass = handler_class
         self._shutdown_request = False
-
-    @property
-    def context(self):
-        return self._context
-
-    @context.setter
-    def context(self, context):
-        if not hasattr(self, 'context'):
-            self._context = context or zmq.Context.instance()
-
-    @property
-    def poller(self):
-        return self._poller
-
-    @poller.setter
-    def poller(self, poller):
-        if not hasattr(self, 'poller'):
-            self._poller = poller or zmq.Poller()
 
     @property
     def protocol(self):

@@ -1,3 +1,8 @@
 # -*- coding: utf-8 -*-
 
-from zwsgi.servers import *
+from .router import ZMQRouterServer
+
+
+__all__ = [
+    'ZMQRouterServer',
+]
