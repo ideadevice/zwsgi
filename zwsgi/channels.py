@@ -3,7 +3,7 @@
 import zmq
 
 
-class ZMQBaseRequestHandlerChannel(object):
+class ZMQBaseChannel(object):
 
     pattern = zmq.PUSH
 

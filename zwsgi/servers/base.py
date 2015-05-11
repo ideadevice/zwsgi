@@ -9,20 +9,20 @@ import zmq
 from zmq.error import ZMQError
 
 from zwsgi.handlers import ZMQBaseRequestHandler
-from zwsgi.channels import ZMQBaseRequestHandlerChannel
+from zwsgi.channels import ZMQBaseChannel
 
 
-class ZMQBaseRequestHandlerThread(ZMQBaseRequestHandlerChannel, Thread):
+class ZMQBaseChannelThread(ZMQBaseChannel, Thread):
 
     def __init__(self, *args):
         Thread.__init__(self)
-        ZMQBaseRequestHandlerChannel.__init__(self, *args)
+        ZMQBaseChannel.__init__(self, *args)
 
 
 class ZMQBaseServer(object):
 
     protocol = "tcp"
-    RequestHandlerChannel = ZMQBaseRequestHandlerThread
+    Channel = ZMQBaseChannelThread
     RequestHandlerClass = ZMQBaseRequestHandler
     pattern = None
     poller = zmq.Poller()
@@ -54,7 +54,7 @@ class ZMQBaseServer(object):
         pass
 
     def _handle(self, ingress):
-        self.RequestHandlerChannel(ingress, self.context, self.RequestHandlerClass, self.pipe_address).start()
+        self.Channel(ingress, self.context, self.RequestHandlerClass, self.pipe_address).start()
 
     def _accept_pipe(self):
         self.pipe.bind(self.pipe_address)
