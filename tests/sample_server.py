@@ -5,7 +5,7 @@ from zwsgi.servers import *
 
 
 def main():
-    server = ZMQRouterDealerServer(('127.0.0.1', 7000))
+    server = ZMQRepReqServer(('127.0.0.1', 7000))
     print server
     server.serve_forever()
 

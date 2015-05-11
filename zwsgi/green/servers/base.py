@@ -6,16 +6,16 @@ from gevent import Greenlet
 import zmq.green as zmq
 
 from zwsgi.servers import ZMQBaseServer as _original_ZMQBaseServer
-from zwsgi.channels import ZMQBaseChannel
+from zwsgi.servers import ZMQBaseServerChannel as _original_ZMQBaseServerChannel
 
 
-class ZMQBaseChannelGreenlet(ZMQBaseChannel, Greenlet):
+class ZMQBaseServerChannelGreenlet(_original_ZMQBaseServerChannel, Greenlet):
 
     def __init__(self, *args):
         Greenlet.__init__(self)
-        ZMQBaseChannel.__init__(self, *args)
+        _original_ZMQBaseServerChannel.__init__(self, *args)
 
 
 class ZMQBaseServer(_original_ZMQBaseServer):
-    Channel = ZMQBaseChannelGreenlet
+    Channel = ZMQBaseServerChannelGreenlet
     poller = zmq.Poller()
