@@ -20,6 +20,17 @@ class ZMQBaseChannelThread(ZMQBaseChannel, Thread):
 
 
 class ZMQBaseServer(object):
+    REP = zmq.REP
+    REQ = zmq.REQ
+    ROUTER = zmq.ROUTER
+    DEALER = zmq.DEALER
+    PUB = zmq.PUB
+    SUB = zmq.SUB
+    XPUB = zmq.XPUB
+    XSUB = zmq.XSUB
+    PULL = zmq.PULL
+    PUSH = zmq.PUSH
+    PAIR = zmq.PAIR
 
     protocol = "tcp"
     Channel = ZMQBaseChannelThread

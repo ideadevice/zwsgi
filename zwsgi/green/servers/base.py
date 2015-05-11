@@ -3,6 +3,8 @@
 
 from gevent import Greenlet
 
+import zmq.green as zmq
+
 from zwsgi.servers import ZMQBaseServer as _original_ZMQBaseServer
 from zwsgi.channels import ZMQBaseChannel
 
@@ -16,3 +18,4 @@ class ZMQBaseChannelGreenlet(ZMQBaseChannel, Greenlet):
 
 class ZMQBaseServer(_original_ZMQBaseServer):
     Channel = ZMQBaseChannelGreenlet
+    poller = zmq.Poller()
