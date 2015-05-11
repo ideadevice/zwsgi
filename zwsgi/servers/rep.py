@@ -18,4 +18,5 @@ class ZMQRepReqServer(ZMQBaseServer):
 
 
 class ZMQRepDealerServer(ZMQRepReqServer):
+    """Note: REP assumes a null frame sent by DEALER (client)"""
     pass
