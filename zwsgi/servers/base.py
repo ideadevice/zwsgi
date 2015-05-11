@@ -22,10 +22,11 @@ class ZMQBaseRequestHandlerThread(ZMQBaseRequestHandlerChannel, Thread):
 class ZMQBaseServer(object):
 
     RequestHandlerChannel = ZMQBaseRequestHandlerThread
+    RequestHandlerClass = ZMQBaseRequestHandler
 
     def __init__(self, address, pattern,
                  context=None, poller=None,
-                 RequestHandlerClass=ZMQBaseRequestHandler):
+                 handler_class=None):
         self._shutdown_request = False
         self.address = address
         self.pattern = pattern
@@ -33,7 +34,8 @@ class ZMQBaseServer(object):
         self.poller = poller
         self.sock = self.context.socket(self.pattern)
         self.pipe = self.context.socket(zmq.PULL)
-        self.RequestHandlerClass = RequestHandlerClass
+        if handler_class is not None:
+            self.RequestHandlerClass = handler_class
 
     @property
     def context(self):
