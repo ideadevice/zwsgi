@@ -11,11 +11,12 @@ from zmq.error import ZMQError
 from zwsgi.handlers import ZMQBaseRequestHandler
 
 
-class ZMQBaseServerChannel(object):
+class ZMQBaseServerChannel(Thread):
 
     pattern = zmq.PUSH
 
     def __init__(self, ingress, context, RequestHandlerClass, address):
+        super(ZMQBaseServerChannel, self).__init__()
         self.context = context
         self.ingress = ingress
         self.RequestHandlerClass = RequestHandlerClass
@@ -54,15 +55,6 @@ class ZMQBaseServerChannel(object):
         self.send()
         self.disconnect()
 
-    _run = run # to make greenlets work
-
-
-class ZMQBaseServerChannelThread(ZMQBaseServerChannel, Thread):
-
-    def __init__(self, *args):
-        Thread.__init__(self)
-        ZMQBaseServerChannel.__init__(self, *args)
-
 
 class ZMQBaseServer(object):
     REP = zmq.REP
@@ -78,7 +70,7 @@ class ZMQBaseServer(object):
     PAIR = zmq.PAIR
 
     protocol = "tcp"
-    Channel = ZMQBaseServerChannelThread
+    Channel = ZMQBaseServerChannel
     RequestHandlerClass = ZMQBaseRequestHandler
     pattern = None
     poller = zmq.Poller()

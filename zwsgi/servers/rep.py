@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
-from .base import ZMQBaseServer, ZMQBaseServerChannelThread
+from .base import ZMQBaseServer, ZMQBaseServerChannel
 
 
-class ZMQRepReqServerChannelThread(ZMQBaseServerChannelThread):
+class ZMQRepReqServerChannel(ZMQBaseServerChannel):
 
     def unpack(self):
         self.request = self.ingress[0]
@@ -14,7 +14,7 @@ class ZMQRepReqServerChannelThread(ZMQBaseServerChannelThread):
 
 class ZMQRepReqServer(ZMQBaseServer):
     pattern = ZMQBaseServer.REP
-    Channel = ZMQRepReqServerChannelThread
+    Channel = ZMQRepReqServerChannel
 
 
 class ZMQRepDealerServer(ZMQRepReqServer):

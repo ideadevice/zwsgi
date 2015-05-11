@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
-from .base import ZMQBaseServer, ZMQBaseServerChannelThread
+from .base import ZMQBaseServer, ZMQBaseServerChannel
 
 
-class ZMQRouterDealerServerChannelThread(ZMQBaseServerChannelThread):
+class ZMQRouterDealerServerChannel(ZMQBaseServerChannel):
 
     def unpack(self):
         self.identity = self.ingress[0]
@@ -13,7 +13,7 @@ class ZMQRouterDealerServerChannelThread(ZMQBaseServerChannelThread):
         self.egress = [self.identity, self.response]
 
 
-class ZMQRouterReqServerChannelThread(ZMQBaseServerChannelThread):
+class ZMQRouterReqServerChannel(ZMQBaseServerChannel):
 
     def unpack(self):
         self.identity = self.ingress[0]
@@ -26,9 +26,9 @@ class ZMQRouterReqServerChannelThread(ZMQBaseServerChannelThread):
 
 class ZMQRouterDealerServer(ZMQBaseServer):
     pattern = ZMQBaseServer.ROUTER
-    Channel = ZMQRouterDealerServerChannelThread
+    Channel = ZMQRouterDealerServerChannel
 
 
 class ZMQRouterReqServer(ZMQBaseServer):
     pattern = ZMQBaseServer.ROUTER
-    Channel = ZMQRouterReqServerChannelThread
+    Channel = ZMQRouterReqServerChannel
