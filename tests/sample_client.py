@@ -10,8 +10,8 @@ def client(pattern=zmq.REQ, addr='tcp://localhost:7000'):
 
 
 def run(sock, req='hello world'):
-    sock.send_multipart([req,])
-    return sock.recv()
+    sock.send_multipart([req, ' ', req, ])
+    return sock.recv_multipart()
 
 
 def main():
