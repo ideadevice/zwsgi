@@ -4,8 +4,7 @@ import gevent
 from gevent import monkey
 monkey.patch_all()
 
-import zwsgi.green as zwsgi
-from zwsgi.servers import ZMQRouterServer
+from zwsgi.green.servers import ZMQRouterServer
 
 
 def main():
