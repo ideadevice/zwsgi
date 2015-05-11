@@ -11,6 +11,14 @@ from zmq.error import ZMQError
 from zwsgi.handlers import ZMQBaseRequestHandler
 
 
+_Poller = zmq.Poller
+
+def patch_poller():
+    global _Poller
+    import zmq.green
+    _Poller = zmq.green.Poller
+
+
 class ZMQBaseServerChannel(Thread):
 
     pattern = zmq.PUSH
@@ -57,6 +65,7 @@ class ZMQBaseServerChannel(Thread):
 
 
 class ZMQBaseServer(object):
+
     REP = zmq.REP
     REQ = zmq.REQ
     ROUTER = zmq.ROUTER
@@ -73,7 +82,7 @@ class ZMQBaseServer(object):
     Channel = ZMQBaseServerChannel
     RequestHandlerClass = ZMQBaseRequestHandler
     pattern = None
-    poller = zmq.Poller()
+    poller = _Poller()
 
     def __init__(self, listener,
                  context=None,
