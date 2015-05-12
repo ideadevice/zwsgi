@@ -30,11 +30,11 @@ class ZMQBaseServerChannel(Thread):
         self.sock.connect(self.address)
 
     def unpack(self):
-        self.request = self.ingress
+        return self.ingress
 
-    def handle(self):
+    def handle(self, request):
         # import time; time.sleep(0.1)
-        self.response = self.RequestHandlerClass(self.request, self.app).handle()
+        return self.RequestHandlerClass(request, self.app, self).handle()
 
     def pack(self):
         self.egress = self.response
@@ -45,16 +45,19 @@ class ZMQBaseServerChannel(Thread):
     def disconnect(self):
         self.sock.close()
 
+    def send_response(self, response):
+        self.pack(response)
+        print "Egress:", self.egress
+        self.send()
+
     def run(self):
         self.connect()
         print "Ingress:", self.ingress
-        self.unpack()
-        print "Request:", self.request
-        self.handle()
-        print "Response:", self.response
-        self.pack()
-        print "Egress:", self.egress
-        self.send()
+        request = self.unpack()
+        print "Request:", request
+        response = self.handle(request)
+        print "Response:", response
+        self.send_response(response)
         self.disconnect()
 
 

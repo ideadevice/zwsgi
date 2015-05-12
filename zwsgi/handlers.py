@@ -12,9 +12,10 @@ import ujson as json
 
 class ZMQBaseRequestHandler(object):
 
-    def __init__(self, request_str, application):
+    def __init__(self, request_str, application, channel):
         self.request_str = request_str
         self.application = application
+        self.channel = channel
         self.response = {}
 
     def decode_request(self):
@@ -55,8 +56,8 @@ class ZMQWSGIRequestHandler(ZMQBaseRequestHandler):
         'wsgi.errors': StringIO(),
     }
 
-    def __init__(self, request_str, application, env_update=None):
-        super(ZMQWSGIRequestHandler, self).__init__(request_str, application)
+    def __init__(self, request_str, application, channel, env_update=None):
+        super(ZMQWSGIRequestHandler, self).__init__(request_str, application, channel)
 
         self.env = self.base_env.copy()
         if env_update:
@@ -93,6 +94,9 @@ class ZMQWSGIRequestHandler(ZMQBaseRequestHandler):
         if auth:
             token = base64.encodestring('%s:%s' % (auth[0], auth[1]))
             self.env['HTTP_AUTHORIZATION'] = 'Basic %s' % token
+
+        # Channel
+        self.env['channel'] = self.channel
 
     def start_response(self, status, headers, exc_info=None):
         self.response['headers'] = headers

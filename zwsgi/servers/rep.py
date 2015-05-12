@@ -6,10 +6,10 @@ from .base import ZMQBaseServer, ZMQBaseServerChannel
 class ZMQRepReqServerChannel(ZMQBaseServerChannel):
 
     def unpack(self):
-        self.request = self.ingress[0]
+        return self.ingress[0]
 
-    def pack(self):
-        self.egress = [self.response,]
+    def pack(self, response):
+        self.egress = [response,]
 
 
 class ZMQRepReqServer(ZMQBaseServer):

@@ -7,10 +7,10 @@ class ZMQRouterDealerServerChannel(ZMQBaseServerChannel):
 
     def unpack(self):
         self.identity = self.ingress[0]
-        self.request = "".join(self.ingress[1:])
+        return "".join(self.ingress[1:])
 
-    def pack(self):
-        self.egress = [self.identity, self.response]
+    def pack(self, response):
+        self.egress = [self.identity, response]
 
 
 class ZMQRouterReqServerChannel(ZMQBaseServerChannel):
@@ -18,10 +18,10 @@ class ZMQRouterReqServerChannel(ZMQBaseServerChannel):
     def unpack(self):
         self.identity = self.ingress[0]
         self.delimiter = self.ingress[1]
-        self.request = "".join(self.ingress[2:])
+        return "".join(self.ingress[2:])
 
-    def pack(self):
-        self.egress = [self.identity, self.delimiter, self.response]
+    def pack(self, response):
+        self.egress = [self.identity, self.delimiter, response]
 
 
 class ZMQRouterDealerServer(ZMQBaseServer):
