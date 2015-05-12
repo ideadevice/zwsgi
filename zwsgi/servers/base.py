@@ -78,7 +78,7 @@ class ZMQBaseServer(object):
     poller = _Poller()
 
     def __init__(self, listener,
-                 context=None,
+                 context=None, bind=True,
                  handler_class=None):
         self.listener = listener
         self.context = context or zmq.Context.instance()
@@ -86,6 +86,7 @@ class ZMQBaseServer(object):
         self.pipe = self.context.socket(zmq.PULL)
         if handler_class is not None:
             self.RequestHandlerClass = handler_class
+        self.bind = bind
         self._shutdown_request = False
 
     @property
@@ -111,7 +112,7 @@ class ZMQBaseServer(object):
         self.poller.register(self.pipe, zmq.POLLIN)
 
     def _accept_sock(self):
-        self.sock.bind(self.address)
+        self.sock.bind(self.address) if self.bind else self.sock.connect(self.address)
         self.poller.register(self.sock, zmq.POLLIN)
 
     def _accept(self):
