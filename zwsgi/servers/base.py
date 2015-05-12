@@ -47,12 +47,12 @@ class ZMQBaseServerChannel(Thread):
 
     def send_response(self, response):
         self.pack(response)
-        print "Egress:", self.egress
+        # print "Egress:", self.egress
         self.send()
 
     def run(self):
         self.connect()
-        print "Ingress:", self.ingress
+        # print "Ingress:", self.ingress
         request = self.unpack()
         print "Request:", request
         response = self.handle(request)
