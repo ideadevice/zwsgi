@@ -8,7 +8,7 @@ from threading import Thread
 import zmq
 from zmq.error import ZMQError
 
-from zwsgi.handlers import ZMQBaseRequestHandler
+from zwsgi.handlers import ZMQWSGIRequestHandler
 from zwsgi.monkey import _Poller
 
 
@@ -16,12 +16,13 @@ class ZMQBaseServerChannel(Thread):
 
     pattern = zmq.PUSH
 
-    def __init__(self, ingress, context, RequestHandlerClass, address):
+    def __init__(self, ingress, context, address, RequestHandlerClass, app):
         super(ZMQBaseServerChannel, self).__init__()
         self.context = context
         self.ingress = ingress
-        self.RequestHandlerClass = RequestHandlerClass
         self.address = address
+        self.RequestHandlerClass = RequestHandlerClass
+        self.app = app
 
     def connect(self):
         self.sock = self.context.socket(self.pattern)
@@ -33,7 +34,7 @@ class ZMQBaseServerChannel(Thread):
 
     def handle(self):
         # import time; time.sleep(0.1)
-        self.response = self.RequestHandlerClass(self.request).handle()
+        self.response = self.RequestHandlerClass(self.request, self.app).handle()
 
     def pack(self):
         self.egress = self.response
@@ -73,20 +74,22 @@ class ZMQBaseServer(object):
 
     protocol = "tcp"
     Channel = ZMQBaseServerChannel
-    RequestHandlerClass = ZMQBaseRequestHandler
+    RequestHandlerClass = ZMQWSGIRequestHandler
     pattern = None
     poller = _Poller()
 
-    def __init__(self, listener,
+    def __init__(self, listener, app,
                  context=None, bind=True,
                  handler_class=None):
         self.listener = listener
+        self.app = app
         self.context = context or zmq.Context.instance()
         self.sock = self.context.socket(self.pattern)
         self.pipe = self.context.socket(zmq.PULL)
         if handler_class is not None:
             self.RequestHandlerClass = handler_class
         self.bind = bind
+        self.application = app
         self._shutdown_request = False
 
     @property
@@ -105,7 +108,8 @@ class ZMQBaseServer(object):
         pass
 
     def _handle(self, ingress):
-        self.Channel(ingress, self.context, self.RequestHandlerClass, self.pipe_address).start()
+        self.Channel(ingress, self.context, self.pipe_address,
+                     self.RequestHandlerClass, self.app).start()
 
     def _accept_pipe(self):
         self.pipe.bind(self.pipe_address)

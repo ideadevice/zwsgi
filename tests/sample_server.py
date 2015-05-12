@@ -1,11 +1,18 @@
 # -*- coding: utf-8 -*-
 
-import zmq
-from zwsgi.servers import *
+from flask import Flask, request
+app = Flask(__name__)
+
+from zwsgi.servers import ZMQRouterDealerServer as WSGIServer
+
+
+@app.route('/ping')
+def hello_world():
+    return 'Hello World!'
 
 
 def main():
-    server = ZMQRouterReqServer(('127.0.0.1', 7000))
+    server = WSGIServer(('127.0.0.1', 7000), app)
     print server
     server.serve_forever()
 
