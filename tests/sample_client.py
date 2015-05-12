@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import time
 import uuid
 
 import zmq
@@ -34,9 +33,8 @@ def run(sock, req='hello world'):
 
     request = json.dumps(req)
     sock.send(request)
-    while True:
-        print sock.recv_multipart()
-        time.sleep(1)
+    print sock.recv_multipart()
+
 
 
 def main():

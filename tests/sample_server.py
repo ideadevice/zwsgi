@@ -3,6 +3,9 @@
 from flask import Flask, request
 app = Flask(__name__)
 
+from zwsgi import monkey
+monkey.patch_all()
+
 from zwsgi.servers import ZMQRouterDealerServer as WSGIServer
 
 
