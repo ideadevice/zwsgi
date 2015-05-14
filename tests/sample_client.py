@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import time
 import uuid
 
 import zmq
@@ -33,13 +34,18 @@ def run(sock, req='hello world'):
 
     request = json.dumps(req)
     sock.send(request)
-    print sock.recv_multipart()
 
+    return sock.recv_multipart()
 
+    """
+    while True:
+        print sock.recv_multipart()
+        time.sleep(1)
+    """
 
 def main():
     sock = client()
-    run(sock)
+    print run(sock)
 
 if __name__ == '__main__':
     main()
