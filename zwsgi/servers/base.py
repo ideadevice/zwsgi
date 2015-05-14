@@ -127,7 +127,7 @@ class ZMQBaseServer(object):
         self._accept_pipe()
 
     def _pre_accept(self):
-        self.pipe_address = "inproc://inproc".format(id(self))
+        self.pipe_address = "inproc://{}.inproc".format(id(self))
         # print "pipe_address {}".format(self.pipe_address)
 
     def _start_accept(self):
