@@ -3,7 +3,9 @@
 """Base ZMQ server classes.
 """
 
+import os
 from threading import Thread
+from multiprocessing import Process
 
 import zmq
 from zmq.error import ZMQError
@@ -12,13 +14,13 @@ from zwsgi.handlers import ZMQWSGIRequestHandler
 from zwsgi.monkey import _Poller
 
 
-class ZMQBaseServerChannel(Thread):
+class ZMQBaseServerChannel(object):
 
     pattern = zmq.PUSH
 
     def __init__(self, ingress, context, address, RequestHandlerClass, app):
         super(ZMQBaseServerChannel, self).__init__()
-        self.context = context
+        self.context = context or zmq.Context()
         self.ingress = ingress
         self.address = address
         self.RequestHandlerClass = RequestHandlerClass
@@ -36,17 +38,19 @@ class ZMQBaseServerChannel(Thread):
         # import time; time.sleep(0.1)
         return self.RequestHandlerClass(request, self.app, self).handle()
 
-    def pack(self):
-        self.egress = self.response
+    def pack(self, response, more):
+        self.egress = [response,] + [more,]
 
     def send(self):
+        print "Self.egress", self.egress
         self.sock.send_multipart(self.egress)
+        print "Self.egress sent", self.egress
 
     def disconnect(self):
         self.sock.close()
 
-    def send_response(self, response):
-        self.pack(response)
+    def send_response(self, response, more="1"):
+        self.pack(response, more)
         # print "Egress:", self.egress
         self.send()
 
@@ -57,7 +61,7 @@ class ZMQBaseServerChannel(Thread):
         print "Request:", request
         response = self.handle(request)
         print "Response:", response
-        self.send_response(response)
+        self.send_response(response, more="0")
         self.disconnect()
 
 
@@ -83,6 +87,7 @@ class ZMQBaseServer(object):
 
     def __init__(self, listener, app,
                  context=None, bind=True,
+                 pool_type=Thread, pool_size=2,
                  handler_class=None):
         self.listener = listener
         self.app = app
@@ -93,6 +98,9 @@ class ZMQBaseServer(object):
             self.RequestHandlerClass = handler_class
         self.bind = bind
         self.application = app
+        self.pool_type = pool_type
+        self.pool_size = pool_size
+        self.pool = self._pool()
         self._shutdown_request = False
 
     @property
@@ -110,25 +118,50 @@ class ZMQBaseServer(object):
     def do_close(self):
         pass
 
+    def start_channel(self, ingress):
+        self.Channel(ingress, self.channel_context, self.pipe_address,
+                     self.RequestHandlerClass, self.app).run()
+
+    def _pool(self):
+        while self.pool_size > 0:
+            self.pool_size -= 1
+            yield self.pool_type
+
     def _handle(self, ingress):
-        self.Channel(ingress, self.context, self.pipe_address,
-                     self.RequestHandlerClass, self.app).start()
+        print "pool size", self.pool_size
+        if self.pool_size > 0:
+            print next(self.pool)(target=self.start_channel, args=(ingress,)).start()
+        else:
+            # TODO: Send ZHTTP response
+            ingress[-1] = "Server capacity reached"
+            self.sock.send_multipart(ingress)
 
     def _accept_pipe(self):
+        if self.pool_type is Thread:
+            self.channel_context = self.context
+            self.pipe_address = "inproc://inproc_{}".format(id(self))
+        elif self.pool_type is Process:
+            self.channel_context = None
+            self.pipe_address = "ipc:///tmp/ipc_{}".format(id(self))
+        else:
+            print >> sys.stderr, "Unknown pool type"
+            sys.exit(-1)
         self.pipe.bind(self.pipe_address)
-        self.poller.register(self.pipe, zmq.POLLIN)
 
     def _accept_sock(self):
         self.sock.bind(self.address) if self.bind else self.sock.connect(self.address)
+
+    def _register_socks(self):
         self.poller.register(self.sock, zmq.POLLIN)
+        self.poller.register(self.pipe, zmq.POLLIN)
 
     def _accept(self):
         self._accept_sock()
         self._accept_pipe()
+        self._register_socks()
 
     def _pre_accept(self):
-        self.pipe_address = "inproc://{}.inproc".format(id(self))
-        # print "pipe_address {}".format(self.pipe_address)
+        pass
 
     def _start_accept(self):
         self._pre_accept()
@@ -139,20 +172,21 @@ class ZMQBaseServer(object):
         pass
 
     def _eventloop(self):
-        # TODO: remove timeout
-        # t_ms = 5000
+        print "Starting Server", os.getpid()
         while not self._shutdown_request:
             try:
-                socks = dict(self.poller.poll())
-                # print "Got event on socks: {}".format(socks)
-                if socks.get(self.sock) == zmq.POLLIN:
-                    ingress = self.sock.recv_multipart(zmq.DONTWAIT)
-                    # print "ingress", ingress
-                    self._handle(ingress)
-                if socks.get(self.pipe) == zmq.POLLIN:
+                events = dict(self.poller.poll())
+                # print "Events", events
+                if self.sock in events:
+                    self._handle(self.sock.recv_multipart(zmq.DONTWAIT))
+                if self.pipe in events:
                     egress = self.pipe.recv_multipart(zmq.DONTWAIT)
-                    # print "egress", egress
-                    self.sock.send_multipart(egress)
+                    print "egress", egress
+                    self.sock.send_multipart(egress[1:])
+                    if egress[0] == "0":
+                        print "Channel completed execution"
+                        self.pool_size += 1
+                        print "Pool size", self.pool_size
             except:
                 self.do_close()
                 raise

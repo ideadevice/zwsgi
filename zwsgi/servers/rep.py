@@ -8,8 +8,8 @@ class ZMQRepReqServerChannel(ZMQBaseServerChannel):
     def unpack(self):
         return self.ingress[0]
 
-    def pack(self, response):
-        self.egress = [response,]
+    def pack(self, response, more):
+        self.egress = [more,] + [response,]
 
 
 class ZMQRepReqServer(ZMQBaseServer):

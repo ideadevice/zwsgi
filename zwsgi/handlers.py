@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import os
 import sys
 import traceback
 import urlparse
@@ -104,6 +105,7 @@ class ZMQWSGIRequestHandler(ZMQBaseRequestHandler):
         self.response['reason'] = status
 
     def start_application(self):
+        result = None
         try:
             result = self.application(self.env, self.start_response)
             outfile = StringIO()
@@ -117,7 +119,9 @@ class ZMQWSGIRequestHandler(ZMQBaseRequestHandler):
         self.response['body'] = outfile.getvalue()
 
     def _handle(self):
+        print "Make environ", os.getpid()
         self.make_environ()
+        print "Start Application"
         self.start_application()
 
     def log_error(self, msg, *args):
