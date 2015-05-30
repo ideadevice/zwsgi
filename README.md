@@ -1,11 +1,11 @@
 # ZWSGI
 ZeroMQ <-> WSGI Bridge.
 
-ZWSGI provides the ability to use rich messaging patterns provided by ZeroMQ to your existing WSGI applications. It changes the underlying transport layer from HTTP to [ZHTTP](http://rfc.zeromq.org/spec:33 "ZHTTP"). It is built on top of [pyzmq] (https://github.com/zeromq/pyzmq "pyzmq") bindings and can be configured to use threads, [greenlets](https://github.com/gevent/gevent "gevent") or processes to handle incoming requests.
+zwsgi provides the ability to use rich messaging patterns provided by ZeroMQ to your existing WSGI applications. It changes the underlying transport layer from HTTP to [ZHTTP](http://rfc.zeromq.org/spec:33 "ZHTTP"). It is built on top of [pyzmq] (https://github.com/zeromq/pyzmq "pyzmq") bindings and can be configured to use threads, [greenlets](https://github.com/gevent/gevent "gevent") or processes to handle incoming requests.
 
 ## Sample Use Case
 
-ZWSGI can be used to realize advanced ZeroMQ patterns like [Majordomo Protocol] (http://rfc.zeromq.org/spec:7 "MDP"), where workers are ZWSGI applications that connect to a broker. This provides a way to build a scalable service oriented architecture.
+zwsgi can be used to realize advanced ZeroMQ patterns like [Majordomo Protocol] (http://rfc.zeromq.org/spec:7 "MDP"), where workers are zwsgi applications that connect to a broker. This provides a way to build a scalable service oriented architecture.
 
 ## Examples
 
