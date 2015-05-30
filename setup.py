@@ -10,7 +10,7 @@ install_reqs = [
 ]
 
 setup(
-    name='calm',
+    name='zwsgi',
     version='0.0.1',
     url='https://github.com/ideadevice/zwsgi',
     author='ID Engg.',
