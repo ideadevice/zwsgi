@@ -87,7 +87,7 @@ class ZMQBaseServer(object):
 
     def __init__(self, listener, app,
                  context=None, bind=True,
-                 pool_type=Thread, pool_size=2,
+                 spawn_type=Thread, spawn_size=2,
                  handler_class=None):
         self.listener = listener
         self.app = app
@@ -98,8 +98,8 @@ class ZMQBaseServer(object):
             self.RequestHandlerClass = handler_class
         self.bind = bind
         self.application = app
-        self.pool_type = pool_type
-        self.pool_size = pool_size
+        self.spawn_type = spawn_type
+        self.spawn_size = spawn_size
         self.pool = self._pool()
         self._shutdown_request = False
 
@@ -123,13 +123,13 @@ class ZMQBaseServer(object):
                      self.RequestHandlerClass, self.app).run()
 
     def _pool(self):
-        while self.pool_size > 0:
-            self.pool_size -= 1
-            yield self.pool_type
+        while self.spawn_size > 0:
+            self.spawn_size -= 1
+            yield self.spawn_type
 
     def _handle(self, ingress):
-        print "pool size", self.pool_size
-        if self.pool_size > 0:
+        print "pool size", self.spawn_size
+        if self.spawn_size > 0:
             print next(self.pool)(target=self.start_channel, args=(ingress,)).start()
         else:
             # TODO: Send ZHTTP response
@@ -137,10 +137,10 @@ class ZMQBaseServer(object):
             self.sock.send_multipart(ingress)
 
     def _accept_pipe(self):
-        if self.pool_type is Thread:
+        if self.spawn_type is Thread:
             self.channel_context = self.context
             self.pipe_address = "inproc://inproc_{}".format(id(self))
-        elif self.pool_type is Process:
+        elif self.spawn_type is Process:
             self.channel_context = None
             self.pipe_address = "ipc:///tmp/ipc_{}".format(id(self))
         else:
@@ -185,8 +185,8 @@ class ZMQBaseServer(object):
                     self.sock.send_multipart(egress[1:])
                     if egress[0] == "0":
                         print "Channel completed execution"
-                        self.pool_size += 1
-                        print "Pool size", self.pool_size
+                        self.spawn_size += 1
+                        print "Pool size", self.spawn_size
             except:
                 self.do_close()
                 raise
