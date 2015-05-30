@@ -13,7 +13,7 @@ setup(
     name='zwsgi',
     version='0.0.1',
     url='https://github.com/ideadevice/zwsgi',
-    author='ID Engg.',
+    author='Balaji J (Idea Device)',
     install_requires=install_reqs,
     description='zeromq wsgi bridge',
     packages=find_packages(),
