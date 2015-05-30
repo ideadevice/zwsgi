@@ -1,5 +1,4 @@
 # ZWSGI
-ZeroMQ <-> WSGI Bridge.
 
 zwsgi provides the ability to use rich messaging patterns provided by ZeroMQ to your existing WSGI applications. It changes the underlying transport layer from HTTP to [ZHTTP](http://rfc.zeromq.org/spec:33 "ZHTTP"). It is built on top of [pyzmq] (https://github.com/zeromq/pyzmq "pyzmq") bindings and can be configured to use threads, [greenlets](https://github.com/gevent/gevent "gevent") or processes to handle incoming requests.
 
