@@ -4,7 +4,7 @@ zwsgi provides the power of rich ZeroMQ messaging library to your existing WSGI 
 
 ## Sample Use Case
 
-zwsgi can be used to realize advanced ZeroMQ patterns like [Majordomo Protocol] (http://rfc.zeromq.org/spec:7 "MDP"), where workers are zwsgi applications that connect to a broker. It provides building blocks to design application architectures based on microservices.
+zwsgi can be used to realize advanced ZeroMQ patterns like [Majordomo Protocol] (http://rfc.zeromq.org/spec:7 "MDP"), where workers are zwsgi applications that connect to a broker. It can be used as a building block to design application architectures based on microservices.
 
 ## Examples
 
