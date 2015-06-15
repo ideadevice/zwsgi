@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from .base import ZMQBaseServer, ZMQBaseServerChannel
+from .base import ZMQBaseServer, ZMQBaseServerChannel, ZMQPreforkedServer, ZMQPreforkedWorkerChannel
 from .router import ZMQRouterDealerServer, ZMQRouterReqServer
 from .rep import ZMQRepReqServer, ZMQRepDealerServer
 

@@ -6,6 +6,7 @@
 import os
 from threading import Thread
 from multiprocessing import Process
+import sys
 
 import zmq
 from zmq.error import ZMQError
@@ -42,27 +43,30 @@ class ZMQBaseServerChannel(object):
         self.egress = [response,] + [more,]
 
     def send(self):
-        print "Self.egress", self.egress
         self.sock.send_multipart(self.egress)
-        print "Self.egress sent", self.egress
 
     def disconnect(self):
         self.sock.close()
 
     def send_response(self, response, more="1"):
         self.pack(response, more)
-        # print "Egress:", self.egress
         self.send()
 
     def run(self):
+        # report_fds("    {} 0".format(self.name))
         self.connect()
+        # report_fds("    {} 1".format(self.name))
         # print "Ingress:", self.ingress
         request = self.unpack()
-        print "Request:", request
+        # report_fds("    {} 2".format(self.name))
+        # print "Request:", request
         response = self.handle(request)
-        print "Response:", response
+        # report_fds("    {} 3".format(self.name))
+        # print "Response:", response
         self.send_response(response, more="0")
+        # report_fds("    {} 4".format(self.name))
         self.disconnect()
+        # report_fds("    {} 5".format(self.name))
 
 
 class ZMQBaseServer(object):
@@ -83,6 +87,7 @@ class ZMQBaseServer(object):
     Channel = ZMQBaseServerChannel
     RequestHandlerClass = ZMQWSGIRequestHandler
     pattern = None
+    pipe_pattern = PULL
     poller = _Poller()
 
     def __init__(self, listener, app,
@@ -93,7 +98,7 @@ class ZMQBaseServer(object):
         self.app = app
         self.context = context or zmq.Context.instance()
         self.sock = self.context.socket(self.pattern)
-        self.pipe = self.context.socket(zmq.PULL)
+        self.pipe = self.context.socket(self.pipe_pattern)
         if handler_class is not None:
             self.RequestHandlerClass = handler_class
         self.bind = bind
@@ -118,9 +123,9 @@ class ZMQBaseServer(object):
     def do_close(self):
         pass
 
-    def start_channel(self, ingress):
+    def start_channel(self, ingress, name):
         self.Channel(ingress, self.channel_context, self.pipe_address,
-                     self.RequestHandlerClass, self.app).run()
+                     self.RequestHandlerClass, self.app, name).run()
 
     def _pool(self):
         while self.spawn_size > 0:
@@ -128,9 +133,11 @@ class ZMQBaseServer(object):
             yield self.spawn_type
 
     def _handle(self, ingress):
-        print "pool size", self.spawn_size
+        # print "pool size", self.spawn_size
+        # report_fds("  Before")
         if self.spawn_size > 0:
-            print next(self.pool)(target=self.start_channel, args=(ingress,)).start()
+            next(self.pool)(target=self.start_channel, args=(ingress, self.spawn_size)).start()
+            # report_fds("  After")
         else:
             # TODO: Send ZHTTP response
             ingress[-1] = "Server capacity reached"
@@ -172,21 +179,25 @@ class ZMQBaseServer(object):
         pass
 
     def _eventloop(self):
+        self.prepare_worker_pool()
         print "Starting Server", os.getpid()
         while not self._shutdown_request:
             try:
                 events = dict(self.poller.poll())
                 # print "Events", events
                 if self.sock in events:
-                    self._handle(self.sock.recv_multipart(zmq.DONTWAIT))
+                    # report_fds("Before handling")
+                    data = self.sock.recv_multipart(zmq.DONTWAIT)
+                    self.pipe.send_multipart(data)
+                    # report_fds("After handling")
                 if self.pipe in events:
                     egress = self.pipe.recv_multipart(zmq.DONTWAIT)
-                    print "egress", egress
+                    # print "egress", egress
                     self.sock.send_multipart(egress[1:])
                     if egress[0] == "0":
-                        print "Channel completed execution"
+                        # print "Channel completed execution"
                         self.spawn_size += 1
-                        print "Pool size", self.spawn_size
+                        # print "Pool size", self.spawn_size
             except:
                 self.do_close()
                 raise
@@ -233,3 +244,85 @@ class ZMQBaseServer(object):
 
     def __str__(self):
         return '<%s at %s %s>' % (type(self).__name__, hex(id(self)), self._formatinfo())
+
+
+class ZMQPreforkedWorkerChannel(object):
+    pattern = zmq.ROUTER
+
+    def __init__(self, context, address, RequestHandlerClass, app):
+        # super(ZMQBaseServerChannel, self).__init__()
+        self.context = context or zmq.Context()
+        self.address = address
+        self.RequestHandlerClass = RequestHandlerClass
+        self.app = app
+
+        self.sock = self.context.socket(self.pattern)
+        self.sock.linger = 1
+        self.sock.connect(self.address)
+    
+    def handle(self, request):
+        # import time; time.sleep(0.1)
+        return self.RequestHandlerClass(request, self.app, self).handle()
+
+    def run(self):
+        while True:
+            request = self.sock.recv_multipart()
+            # print "Got {}".format(request)
+            # We will have two addresses now. The incoming packet will look like this
+            # [pipe_router_identity, client_router_identity, '' , actual_command]
+            # We need to use just -1 for command processing and then retain the envelope from 1: 
+            # while sending this back.
+            pipe_identity, envelope, command = request[0], request[1:-1], request[-1]
+            command = request[-1]
+            command_response = self.handle(command)
+            response = [pipe_identity, ''] + envelope + [command_response]
+            # print "Returning {}".format(response)
+            self.sock.send_multipart(response)
+
+
+class ZMQPreforkedServer(ZMQBaseServer):
+    pipe_pattern = zmq.DEALER
+    Channel = ZMQPreforkedWorkerChannel
+    RequestHandlerClass = ZMQWSGIRequestHandler
+
+    def __init__(self, address, command_handler, handler_class, spawn_type, spawn_size):
+        super(ZMQPreforkedServer, self).__init__(address, command_handler, 
+                                                 spawn_type = spawn_type, 
+                                                 spawn_size = spawn_size,
+                                                 handler_class = handler_class)
+
+    def prepare_worker_pool(self):
+        print "Pre spawning workers"
+        for i in range(self.spawn_size):
+            sys.stdout.write(".")
+            sys.stdout.flush()
+            worker_channel = self.Channel(self.context, self.pipe_address, self.RequestHandlerClass, self.app)
+            worker = self.spawn_type(target=worker_channel.run)
+            worker.start()
+        print " {} workers spawned".format(i+1)
+
+    def _eventloop(self):
+        self.pool = self.prepare_worker_pool()
+        print "Starting Server", os.getpid()
+        while not self._shutdown_request:
+            try:
+                events = dict(self.poller.poll())
+                # print "Events", events
+                if self.sock in events:
+                    # report_fds("Before handling")
+                    data = self.sock.recv_multipart(zmq.DONTWAIT)
+                    # print "From client .. {}".format(data)
+                    self.pipe.send_multipart(data)
+                    # print " Sent it to a worker".format(data)
+                    # report_fds("After handling")
+                if self.pipe in events:
+                    egress = self.pipe.recv_multipart(zmq.DONTWAIT)
+                    # print "From pipe {}".format(egress)
+                    # print "egress", egress
+                    self.sock.send_multipart(egress[1:])
+                    # print " Sent it to client"
+            except:
+                self.do_close()
+                raise
+
+    
