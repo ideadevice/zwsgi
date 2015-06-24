@@ -179,7 +179,6 @@ class ZMQBaseServer(object):
         pass
 
     def _eventloop(self):
-        self.prepare_worker_pool()
         print "Starting Server", os.getpid()
         while not self._shutdown_request:
             try:
@@ -251,7 +250,7 @@ class ZMQPreforkedWorkerChannel(object):
 
     def __init__(self, context, address, RequestHandlerClass, app):
         # super(ZMQBaseServerChannel, self).__init__()
-        self.context = context or zmq.Context()
+        self.context = context or zmq.Context.instance()
         self.address = address
         self.RequestHandlerClass = RequestHandlerClass
         self.app = app
@@ -259,25 +258,33 @@ class ZMQPreforkedWorkerChannel(object):
         self.sock = self.context.socket(self.pattern)
         self.sock.linger = 1
         self.sock.connect(self.address)
+
+        self.stop = False
     
     def handle(self, request):
         # import time; time.sleep(0.1)
         return self.RequestHandlerClass(request, self.app, self).handle()
 
     def run(self):
-        while True:
-            request = self.sock.recv_multipart()
-            # print "Got {}".format(request)
-            # We will have two addresses now. The incoming packet will look like this
-            # [pipe_router_identity, client_router_identity, '' , actual_command]
-            # We need to use just -1 for command processing and then retain the envelope from 1: 
-            # while sending this back.
-            pipe_identity, envelope, command = request[0], request[1:-1], request[-1]
-            command = request[-1]
-            command_response = self.handle(command)
-            response = [pipe_identity, ''] + envelope + [command_response]
-            # print "Returning {}".format(response)
-            self.sock.send_multipart(response)
+        while not self.stop:
+            try:
+                request = self.sock.recv_multipart(zmq.NOBLOCK)
+                # print "Got {}".format(request)
+                # We will have two addresses now. The incoming packet will look like this
+                # [pipe_router_identity, client_router_identity, '' , actual_command]
+                # We need to use just -1 for command processing and then retain the envelope from 1: 
+                # while sending this back.
+                pipe_identity, envelope, command = request[0], request[1:-1], request[-1]
+                command = request[-1]
+                command_response = self.handle(command)
+                response = [pipe_identity, ''] + envelope + [command_response]
+                # print "Returning {}".format(response)
+                self.sock.send_multipart(response)
+            except zmq.error.Again as e:
+                pass
+
+    def terminate(self):
+        self.stop = True
 
 
 class ZMQPreforkedServer(ZMQBaseServer):
@@ -290,39 +297,47 @@ class ZMQPreforkedServer(ZMQBaseServer):
                                                  spawn_type = spawn_type, 
                                                  spawn_size = spawn_size,
                                                  handler_class = handler_class)
+        self.workers = []
+        self._start_accept()
+        self.prepare_worker_pool()
 
     def prepare_worker_pool(self):
-        print "Pre spawning workers"
+        sys.stdout.write("Pre spawning workers ")
+        i = 0
         for i in range(self.spawn_size):
             sys.stdout.write(".")
             sys.stdout.flush()
             worker_channel = self.Channel(self.context, self.pipe_address, self.RequestHandlerClass, self.app)
             worker = self.spawn_type(target=worker_channel.run)
             worker.start()
-        print " {} workers spawned".format(i+1)
+            self.workers.append(worker_channel)
+        print "({})".format(i+1)
+
 
     def _eventloop(self):
-        self.pool = self.prepare_worker_pool()
         print "Starting Server", os.getpid()
         while not self._shutdown_request:
-            try:
-                events = dict(self.poller.poll())
-                # print "Events", events
-                if self.sock in events:
-                    # report_fds("Before handling")
-                    data = self.sock.recv_multipart(zmq.DONTWAIT)
-                    # print "From client .. {}".format(data)
-                    self.pipe.send_multipart(data)
-                    # print " Sent it to a worker".format(data)
-                    # report_fds("After handling")
-                if self.pipe in events:
-                    egress = self.pipe.recv_multipart(zmq.DONTWAIT)
-                    # print "From pipe {}".format(egress)
-                    # print "egress", egress
-                    self.sock.send_multipart(egress[1:])
-                    # print " Sent it to client"
-            except:
-                self.do_close()
-                raise
+            events = dict(self.poller.poll())
+            # print "Events", events
+            if self.sock in events:
+                # report_fds("Before handling")
+                data = self.sock.recv_multipart(zmq.DONTWAIT)
+                # print "From client .. {}".format(data)
+                self.pipe.send_multipart(data)
+                # print " Sent it to a worker".format(data)
+                # report_fds("After handling")
+            if self.pipe in events:
+                egress = self.pipe.recv_multipart(zmq.DONTWAIT)
+                # print "From pipe {}".format(egress)
+                # print "egress", egress
+                self.sock.send_multipart(egress[1:])
+                # print " Sent it to client"
 
-    
+    def _serve(self):
+        self._eventloop()
+
+    def terminate(self):
+        for i in self.workers:
+            i.terminate()
+        self._stop()
+        
