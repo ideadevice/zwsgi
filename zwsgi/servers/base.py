@@ -94,10 +94,16 @@ class ZMQBaseServer(object):
                  context=None, bind=True,
                  spawn_type=Thread, spawn_size=2,
                  handler_class=None):
-        self.listener = listener
+        if isinstance(listener, tuple):
+            self.address = "{}://{}:{}".format(self.protocol, self.listener[0], self.listener[1])
+            self.bound = False
+            self.sock = self.context.socket(self.pattern)
+        elif isinstance(listener, zmq.Socket):
+            self.sock = listener
+            self.address = self.sock.getsockopt(zmq.LAST_ENDPOINT)
+            self.bound = True
         self.app = app
         self.context = context or zmq.Context.instance()
-        self.sock = self.context.socket(self.pattern)
         self.pipe = self.context.socket(self.pipe_pattern)
         if handler_class is not None:
             self.RequestHandlerClass = handler_class
@@ -108,9 +114,6 @@ class ZMQBaseServer(object):
         self.pool = self._pool()
         self._shutdown_request = False
 
-    @property
-    def address(self):
-        return "{}://{}:{}".format(self.protocol, self.listener[0], self.listener[1])
 
     @property
     def sock_closed(self):
@@ -156,7 +159,8 @@ class ZMQBaseServer(object):
         self.pipe.bind(self.pipe_address)
 
     def _accept_sock(self):
-        self.sock.bind(self.address) if self.bind else self.sock.connect(self.address)
+        if not self.bound:
+            self.sock.bind(self.address) if self.bind else self.sock.connect(self.address)
 
     def _register_socks(self):
         self.poller.register(self.sock, zmq.POLLIN)
