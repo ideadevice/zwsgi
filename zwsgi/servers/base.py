@@ -272,7 +272,7 @@ class ZMQPreforkedWorkerChannel(object):
     def run(self):
         while not self.stop:
             try:
-                request = self.sock.recv_multipart(zmq.NOBLOCK)
+                request = self.sock.recv_multipart()
                 # print "Got {}".format(request)
                 # We will have two addresses now. The incoming packet will look like this
                 # [pipe_router_identity, client_router_identity, '' , actual_command]
