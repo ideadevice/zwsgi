@@ -14,13 +14,13 @@ zwsgi can be used to realize advanced ZeroMQ patterns like [Majordomo Protocol] 
 from flask import Flask
 from zwsgi.servers import ZMQRouterDealerServer as WSGIServer
 
+app = Flask(__name__)
 
 @app.route('/ping')
 def hello_world():
     return 'Hello World!'
 
 
-app = Flask(__name__)
 server = WSGIServer(('127.0.0.1', 7000), app)
 server.serve_forever()
 ```
@@ -34,12 +34,13 @@ monkey.patch_all()
 from zwsgi.servers import ZMQRouterDealerServer as WSGIServer
 
 
+app = Flask(__name__)
+
 @app.route('/ping')
 def hello_world():
     return 'Hello World!'
 
 
-app = Flask(__name__)
 server = WSGIServer(('127.0.0.1', 7000), app)
 server.serve_forever()
 ```
@@ -51,13 +52,12 @@ from flask import Flask
 from multiprocessing import Process
 from zwsgi.servers import ZMQRouterDealerServer as WSGIServer
 
+app = Flask(__name__)
 
 @app.route('/ping')
 def hello_world():
     return 'Hello World!'
 
-
-app = Flask(__name__)
 server = WSGIServer(('127.0.0.1', 7000), app, spawn_type=Process)
 server.serve_forever()
 ```
