@@ -6,8 +6,8 @@ import zwsgi
 
 
 install_reqs = [
-    'pyzmq==14.6.0',
-    'ujson==1.33',
+    'pyzmq>=14.6.0',
+    'ujson>=1.33',
 ]
 
 setup(
